@@ -114,19 +114,19 @@ func (hr *HashRing) AddMembers(member []Member) {
 	defer hr.mu.Unlock()
 
 	for _, member := range member {
-		hr.add(member)
+		hr.AddMember(member)
 	}
 	sort.Sort(hr.idx)
 }
 
 // AddMember adds a member to Hash ring
-func (hr *HashRing) add(member Member) {
+func (hr *HashRing) AddMember(member Member) {
 	for i := 0; i < hr.replicaCount; i++ {
 		key := fmt.Sprintf("%s:%d", member.String(), i)
 		hkey, err := hasher(hr.hash, []byte(key))
 		if err != nil {
 			MemberAddFailure.Inc()
-			log.Printf("failed to add member: %v", err)
+			log.Printf("failed to AddMember member: %v", err)
 			return
 		}
 		hr.idx = append(hr.idx, hkey)
@@ -134,15 +134,12 @@ func (hr *HashRing) add(member Member) {
 	}
 }
 
-// Error safe wrapper for Locate function
-func (hr *HashRing) LocateKey(key string) string {
-	member, err := hr.Locate(key)
-	if err != nil {
-		LocateKeyFailure.Inc()
-		log.Printf("LocateKey failed: %v", err)
-		return ""
+func (hr *HashRing) RemoveMember(member Member) {
+	for _, mem := range hr.GetMembers() {
+		if mem != member {
+			hr.AddMember(mem)
+		}
 	}
-	return member.String()
 }
 
 // Locate returns the member for a given key
